@@ -3,6 +3,7 @@ import shutil
 import zipfile
 from tqdm import tqdm 
 
+# Modify data_root or out_root according to your data path 
 data_root = '2.Validation'
 out_root = 'val_preprocessed'
 
