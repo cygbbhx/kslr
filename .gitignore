@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 *.pth
 *.pt
-main/model/pretrained/&=*
+main/model/pretrained/*
