@@ -6,6 +6,7 @@ import os
 import json
 import torch
 import torch.nn.functional as F
+from PIL import Image
 
 class MnistDataLoader(BaseDataLoader):
     """
@@ -32,12 +33,12 @@ class VideoDataLoader(BaseDataLoader):
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 class VideoDataset(Dataset):
-    def __init__(self, path='../../kslr_dataset/train', mode='train', transforms=None, **kwargs):
+    def __init__(self, path='../../kslr-60/data/image_data', mode='train', transforms=None, **kwargs):
         self.path = path
         self.mode = mode
 
-        self.num_samples = kwargs['num_samples']
-        self.interval = kwargs['interval']
+        self.num_samples = 32
+        self.interval = 0
         
         if transforms is None:
             self.transforms = T.ToTensor()
@@ -47,79 +48,33 @@ class VideoDataset(Dataset):
         self.videos = []
         self.labels = []
         
-        self.mtype_index = []
-        self.clips = []
-        self.clip_src_idx = []
-        
         # load data after init
         self._load_data()
 
     def _load_data(self):
-        
-        assert self.iter_path is not None, "video directories are not set"
-        assert self.mtype is not None, "manipulation types are not set"
+        vocab_dirs = sorted(os.listdir(self.path))
 
-        for i, video_dir in enumerate(self.iter_path):
-            assert os.path.exists(video_dir), f"{video_dir} does not exist"
+        for i, video_dir in enumerate(vocab_dirs):
+            video_path = os.path.join(self.path, video_dir)
+            assert os.path.exists(video_path), f"{video_dir} does not exist"
 
-            all_video_keys = sorted(os.listdir(video_dir))
+            all_video_keys = sorted(os.listdir(video_path))
             final_video_keys = self._get_splits(all_video_keys)
 
-            video_dirs = [os.path.join(video_dir, video_key) for video_key in final_video_keys]
+            video_dirs = [os.path.join(video_path, video_key) for video_key in final_video_keys]
             self.videos += video_dirs
-            self.labels += self._get_labels(video_dir, final_video_keys)
-            self.mtype_index += [i for _ in range(len(final_video_keys))]
-
-        if self.mode == 'train':
-            self._oversample()
-        else:
-            self._get_clips()
-
-    def _get_clips(self):
-        for i, video_dir in enumerate(self.videos):
-            frame_keys = sorted(os.listdir(video_dir))
-            frame_count = len(frame_keys)
-            num_samples = self.num_samples
-            interval = self.interval # UNIFORM :1,2 / SPREAD: max(total_frames // num_samples, 1)
-            max_length = (num_samples - 1) * self.interval + num_samples
-
-            for starting_point in range(0, frame_count, (num_samples-1)*interval + num_samples):
-                if (interval == 0) or (frame_count <= max_length):
-                    sampled_keys = frame_keys[starting_point:starting_point+num_samples]
-                else:
-                    sampled_indices = np.arange(starting_point, frame_count, interval)[:num_samples]
-                    sampled_keys = [frame_keys[idx] for idx in sampled_indices]
-
-                if len(sampled_keys) < num_samples:
-                    break
-
-                self.clips += [sampled_keys]
-                self.clip_src_idx.append(i)
+            self.labels += [i for _ in range(len(final_video_keys))]
 
     def __len__(self):
-        if self.mode == 'train':
-            return len(self.videos)
-        else:
-            return len(self.clips)
+        return len(self.videos)
     
     def __getitem__(self, index):
-        if self.mode == 'train':
-            video_dir = self.videos[index]
-            frame_keys = sorted(os.listdir(video_dir))
-            frame_count = len(frame_keys)
-            clip_length = (self.num_samples - 1) * self.interval + self.num_samples
+        video_dir = self.videos[index]
+        frame_keys = sorted(os.listdir(video_dir))
+        frame_count = len(frame_keys)
 
-            if (self.interval == 0) or (frame_count <= clip_length):
-                starting_point = random.randint(0, frame_count - self.num_samples)
-                sampled_keys = frame_keys[starting_point:starting_point+self.num_samples]
-            else:
-                starting_point = random.randint(0, frame_count - clip_length)
-                sampled_indices = np.arange(starting_point, frame_count, self.interval)[:self.num_samples]
-                sampled_keys = [frame_keys[idx] for idx in sampled_indices]
-        else:
-            src_idx = self.clip_src_idx[index]
-            video_dir = self.videos[src_idx]
-            sampled_keys = self.clips[index]
+        sampled_indices = evenly_sample_frames(frame_count, self.num_samples)
+        sampled_keys = [frame_keys[idx] for idx in sampled_indices]
 
         frames = []
 
@@ -132,13 +87,21 @@ class VideoDataset(Dataset):
             frames.append(frame)
 
         frame_data = torch.stack(frames, dim=0).transpose(0,1)
-
-        if self.mode == 'train':
-            data = {'frame': frame_data, 'label': self.labels[index]}
-        else:
-            data = {'video': src_idx, 'frame': frame_data, 'label': self.labels[src_idx]}
+        data = {'frame': frame_data, 'label': self.labels[index]}
 
         return data
+
+
+    def _get_splits(self, video_keys):
+        # Default split logic. Redefine the function if needed
+        if self.mode == 'train':
+            video_keys = video_keys[:int(len(video_keys)*0.8)]
+        elif self.mode == 'val':
+            video_keys = video_keys[int(len(video_keys)*0.8):int(len(video_keys)*0.9)]
+        elif self.mode == 'test':
+            video_keys = video_keys[int(len(video_keys)*0.9):]
+
+        return video_keys
 
 class KeyPointDataset(Dataset):
     def __init__(self, path='../../kslr_metadata/train_keypoints', mode='train', transforms=None, **kwargs):
@@ -218,8 +181,7 @@ def reshape_keypoints(keypoints_data):
     return reshaped_keypoints
 
 if __name__ == '__main__':
-    ds = KeyPointDataset()
+    ds = VideoDataset()
 
     for d in ds:
-        print(d['keypoints'].shape)
-        print("aa")
+        print(d['frame'].shape)
