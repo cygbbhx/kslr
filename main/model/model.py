@@ -2,6 +2,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from base import BaseModel
 from torchvision import models
+from model.i3d import InceptionI3d
+from model.p3d import P3D199
 import torch
 
 class MnistModel(BaseModel):
@@ -31,4 +33,23 @@ class ResNet18(BaseModel):
 
     def forward(self, x):
         x = self.resnet18_pretrained(x)
+        return F.log_softmax(x, dim=1)
+
+class I3D(BaseModel):
+    def __init__(self, num_classes=60):
+        super().__init__()
+        self.i3d = InceptionI3d(pretrained=True, pretrained_path='model/pretrained/rgb_imagenet.pt', num_frames=64)
+        self.i3d.replace_logits(num_classes=num_classes)
+
+    def forward(self, x):
+        x = self.i3d(x)
+        return F.log_softmax(x, dim=1)
+
+class P3D(BaseModel):
+    def __init__(self, num_classes=60):
+        super().__init__()
+        self.model = P3D199(pretrained=False,num_classes=num_classes)
+
+    def forward(self, x):
+        x = self.model(x)
         return F.log_softmax(x, dim=1)
