@@ -24,24 +24,28 @@ class MnistDataLoader(BaseDataLoader):
 
 class KeyPointsDataLoader(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
-        self.dataset = KeyPointDataset()
+        self.dataset = KeyPointDataset(path=data_dir)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 class VideoDataLoader(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
-        self.dataset = VideoDataset()
+        self.dataset = VideoDataset(path=data_dir)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 class VideoDataset(Dataset):
-    def __init__(self, path='../../kslr-60/data/image_data', mode='train', transforms=None, **kwargs):
+    def __init__(self, path, mode='train', transforms=None, **kwargs):
         self.path = path
         self.mode = mode
 
-        self.num_samples = 32
+        self.num_samples = 64
         self.interval = 0
         
         if transforms is None:
-            self.transforms = T.ToTensor()
+            self.transforms = T.Compose([
+                T.CenterCrop(240),  # Crop a square from the center
+                T.Resize((224, 224)),           # Resize to 224x224
+                T.ToTensor()
+            ])
         else:
             self.transforms = transforms
         
@@ -87,9 +91,10 @@ class VideoDataset(Dataset):
             frames.append(frame)
 
         frame_data = torch.stack(frames, dim=0).transpose(0,1)
-        data = {'frame': frame_data, 'label': self.labels[index]}
+        label = self.labels[index]
 
-        return data
+        return frame_data, label
+
 
 
     def _get_splits(self, video_keys):
@@ -104,7 +109,7 @@ class VideoDataset(Dataset):
         return video_keys
 
 class KeyPointDataset(Dataset):
-    def __init__(self, path='../../kslr_metadata/train_keypoints', mode='train', transforms=None, **kwargs):
+    def __init__(self, path, mode='train', transforms=None, **kwargs):
         self.path = path
         self.mode = mode
 
