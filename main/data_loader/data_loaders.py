@@ -42,8 +42,9 @@ class VideoDataset(Dataset):
         
         if transforms is None:
             self.transforms = T.Compose([
-                T.CenterCrop(240),  # Crop a square from the center
-                T.Resize((224, 224)),           # Resize to 224x224
+                T.RandomApply([T.RandomAffine(degrees=5, translate=(0.05, 0.05))], p=0.5),  # Random rotation and shifting
+                T.RandomResizedCrop(224, scale=(0.7, 1.3), ratio=(0.8, 1.2)),  # Random resizing and cropping
+                T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),  # Random color jitter
                 T.ToTensor()
             ])
         else:
