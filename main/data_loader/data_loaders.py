@@ -37,13 +37,14 @@ class VideoDataset(Dataset):
         self.path = path
         self.mode = mode
 
-        self.num_samples = 64
+        self.num_samples = 32
         self.interval = 0
         
         if transforms is None:
             self.transforms = T.Compose([
+                T.CenterCrop(300),
                 T.RandomApply([T.RandomAffine(degrees=5, translate=(0.05, 0.05))], p=0.5),  # Random rotation and shifting
-                T.RandomResizedCrop(224, scale=(0.7, 1.3), ratio=(0.8, 1.2)),  # Random resizing and cropping
+                T.RandomResizedCrop(224, scale=(0.7, 1.3), ratio=(0.8, 1.2)),  # Random resizing and cropping Resize to 224x224
                 T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),  # Random color jitter
                 T.ToTensor()
             ])
@@ -76,6 +77,7 @@ class VideoDataset(Dataset):
     def __getitem__(self, index):
         video_dir = self.videos[index]
         frame_keys = sorted(os.listdir(video_dir))
+        frame_keys = [frame_key for frame_key in frame_keys if frame_key.endswith('.jpg')]
         frame_count = len(frame_keys)
 
         sampled_indices = evenly_sample_frames(frame_count, self.num_samples)
