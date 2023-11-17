@@ -38,7 +38,7 @@ class ResNet18(BaseModel):
 class I3D(BaseModel):
     def __init__(self, num_classes=60):
         super().__init__()
-        self.i3d = InceptionI3d(pretrained=True, pretrained_path='model/pretrained/rgb_imagenet.pt', num_frames=64)
+        self.i3d = InceptionI3d(pretrained=True, pretrained_path='model/pretrained/rgb_imagenet.pt', num_frames=32)
         self.i3d.replace_logits(num_classes=num_classes)
 
     def forward(self, x):
