@@ -182,6 +182,21 @@ def evenly_sample_frames(total_frames, sample_count):
     sample_indices = [i * step for i in range(frames_to_sample)]
     return sample_indices
 
+def uniform_interval_sample_frames(total_frames, sample_count):
+    frames_to_sample = min(total_frames, sample_count)
+    
+    if total_frames < 2 or sample_count < 2:
+        # Not enough frames or samples, return the original implementation
+        return evenly_sample_frames(total_frames, sample_count)
+
+    sample_indices = [i * (total_frames - 1) // (frames_to_sample - 1) for i in range(frames_to_sample)]
+    
+    # If the last index is not already the last frame, add the last frame index
+    if sample_indices[-1] != total_frames - 1:
+        sample_indices[-1] = total_frames - 1
+    
+    return sample_indices
+
 def reshape_keypoints(keypoints_data):
     del keypoints_data[4-1::4] # remove every 4th (confidence) value
     reshaped_keypoints = torch.tensor(keypoints_data).reshape(-1, 3)
