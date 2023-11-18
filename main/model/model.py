@@ -56,7 +56,7 @@ class P3D(BaseModel):
 
 class Conv1d_LSTM(nn.Module):
     def __init__(self,in_channels=128, num_classes=60):
-        super(Conv1d_LSTM2, self).__init__()
+        super(Conv1d_LSTM, self).__init__()
         # Adjusted in_channels to 137 to match dataset output
         self.conv1d_1 = nn.Conv1d(in_channels=in_channels, 
                                   out_channels=16, 
