@@ -27,6 +27,21 @@ class KeyPointsDataLoader(BaseDataLoader):
         self.dataset = KeyPointDataset(path=data_dir)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
+class KeyPointsDataLoader_for1dcnnlstm(BaseDataLoader):
+    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
+        self.dataset = KeyPointDataset_for1dcnnlstm()
+        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
+
+class KeyPointsDataLoader_for1dcnnlstm_withoutface(BaseDataLoader):
+    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
+        self.dataset = KeyPointDataset_for1dcnnlstm_withoutface()
+        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
+
+class KeyPointsDataLoader_forlstm(BaseDataLoader):
+    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
+        self.dataset = KeyPointDataset_forlstm()
+        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
+
 class VideoDataLoader(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
         self.dataset = VideoDataset(path=data_dir)
@@ -175,6 +190,212 @@ class KeyPointDataset(Dataset):
         data = {'src': video_path, 'keypoints': keypoints_data, 'label': self.labels[index]}
 
         return keypoints_data, self.labels[index]
+
+class KeyPointDataset_for1dcnnlstm(Dataset):
+    def __init__(self, path='../../kslr_metadata/train_keypoints', mode='train', transforms=None, **kwargs):
+        self.path = path
+        self.mode = mode
+        self.num_samples = 128
+        
+        if transforms is None:
+            self.transforms = T.Compose([
+            T.Resize((224, 224)),
+            T.ToTensor()
+            ])
+        else:
+            self.transforms = transforms
+        
+        self.videos = []
+        self.labels = []
+        self._load_data()
+
+    def _load_data(self):
+        for vocab in os.listdir(self.path):
+            label = int(vocab)
+            for collector in os.listdir(os.path.join(self.path, vocab)):
+                for angle in os.listdir(os.path.join(self.path, vocab, collector)):
+                    vocab_datas = os.path.join(self.path, vocab, collector, angle)
+                    self.videos.append(vocab_datas)
+                    self.labels += [label for _ in range(len(vocab_datas))]
+
+    def __len__(self):
+        return len(self.videos)    
+    
+    def __getitem__(self, index):
+        video_path = self.videos[index]
+        frame_keys = sorted(os.listdir(video_path))
+        frame_count = len(frame_keys)
+        sampled_indices = evenly_sample_frames(frame_count, self.num_samples)
+        sampled_keys = [frame_keys[idx] for idx in sampled_indices]
+
+        all_frames_keypoints = []
+
+        for frame_key in sampled_keys:
+            with open(os.path.join(video_path, frame_key)) as json_file:
+                data = json.load(json_file)
+
+            if not data.get("people") or not data["people"]:
+                continue  # Skip frame if no people are detected
+
+            keypoints = []
+            for part in ["face_keypoints_3d", "hand_left_keypoints_3d", "hand_right_keypoints_3d", "pose_keypoints_3d"]:
+                part_keypoints = reshape_keypoints(data["people"][part])
+                # Average the x, y, z values for each keypoint
+                averaged_keypoints = part_keypoints.mean(dim=1)
+                keypoints.extend(averaged_keypoints.tolist())
+
+            if len(keypoints) < 137:  # Check if keypoints length is as expected
+                continue  # Skip frame if keypoints are missing
+
+            all_frames_keypoints.append(torch.tensor(keypoints))
+
+        # Handle case with fewer than 128 frames
+        while len(all_frames_keypoints) < 128:
+            all_frames_keypoints.append(torch.zeros(137))  # Append zero-padding
+
+        keypoints_tensor = torch.stack(all_frames_keypoints)  # Shape: [128, 137]
+        keypoints_tensor = keypoints_tensor.view(128, 137)
+        
+
+        return keypoints_tensor, self.labels[index]
+
+class KeyPointDataset_for1dcnnlstm_withoutface(Dataset):
+    def __init__(self, path='../../kslr_metadata/train_keypoints', mode='train', transforms=None, **kwargs):
+        self.path = path
+        self.mode = mode
+        self.num_samples = 128
+        
+        if transforms is None:
+            self.transforms = T.Compose([
+            T.Resize((224, 224)),
+            T.ToTensor()
+            ])
+        else:
+            self.transforms = transforms
+        
+        self.videos = []
+        self.labels = []
+        self._load_data()
+
+    def _load_data(self):
+        for vocab in os.listdir(self.path):
+            label = int(vocab)
+            for collector in os.listdir(os.path.join(self.path, vocab)):
+                for angle in os.listdir(os.path.join(self.path, vocab, collector)):
+                    vocab_datas = os.path.join(self.path, vocab, collector, angle)
+                    self.videos.append(vocab_datas)
+                    self.labels += [label for _ in range(len(vocab_datas))]
+
+    def __len__(self):
+        return len(self.videos)    
+    
+    def __getitem__(self, index):
+        video_path = self.videos[index]
+        frame_keys = sorted(os.listdir(video_path))
+        frame_count = len(frame_keys)
+        sampled_indices = evenly_sample_frames(frame_count, self.num_samples)
+        sampled_keys = [frame_keys[idx] for idx in sampled_indices]
+
+        all_frames_keypoints = []
+
+        for frame_key in sampled_keys:
+            with open(os.path.join(video_path, frame_key)) as json_file:
+                data = json.load(json_file)
+
+            if not data.get("people") or not data["people"]:
+                continue  # Skip frame if no people are detected
+
+            keypoints = []
+            for part in ["hand_left_keypoints_3d", "hand_right_keypoints_3d", "pose_keypoints_3d"]:
+                part_keypoints = reshape_keypoints(data["people"][part])
+                # Average the x, y, z values for each keypoint
+                averaged_keypoints = part_keypoints.mean(dim=1)
+                keypoints.extend(averaged_keypoints.tolist())
+
+            if len(keypoints) < 67:  # Check if keypoints length is as expected
+                continue  # Skip frame if keypoints are missing
+
+            all_frames_keypoints.append(torch.tensor(keypoints))
+
+        # Handle case with fewer than 128 frames
+        while len(all_frames_keypoints) < 128:
+            all_frames_keypoints.append(torch.zeros(67))  # Append zero-padding
+
+        keypoints_tensor = torch.stack(all_frames_keypoints)  # Shape: [128, 67]
+        keypoints_tensor = keypoints_tensor.view(128, 67)
+        
+
+        return keypoints_tensor, self.labels[index]
+
+class KeyPointDataset_forlstm(Dataset):
+    def __init__(self, path='../../kslr_metadata/train_keypoints', mode='train', transforms=None, **kwargs):
+        self.path = path
+        self.mode = mode
+
+        self.num_samples = 128
+        
+        if transforms is None:
+            self.transforms = T.Compose([
+            T.Resize((224, 224)),
+            T.ToTensor()
+            ])
+        else:
+            self.transforms = transforms
+        
+        self.videos = []
+        self.labels = []
+        self._load_data()
+
+    def _load_data(self):
+        for vocab in os.listdir(self.path):
+            label = int(vocab)
+            for collector in os.listdir(os.path.join(self.path, vocab)):
+                for angle in os.listdir(os.path.join(self.path, vocab, collector)):
+                    vocab_datas = os.path.join(self.path, vocab, collector, angle)
+                    self.videos.append(vocab_datas)
+                    self.labels += [label for _ in range(len(vocab_datas))]
+
+    def __len__(self):
+        return len(self.videos)    
+    
+    def __getitem__(self, index):
+        video_path = self.videos[index]
+        frame_keys = sorted(os.listdir(video_path))
+        frame_count = len(frame_keys)
+        sampled_indices = evenly_sample_frames(frame_count, self.num_samples)
+        sampled_keys = [frame_keys[idx] for idx in sampled_indices]
+
+        all_frames_values = []
+
+        for frame_key in sampled_keys:
+            with open(os.path.join(video_path, frame_key)) as json_file:
+                data = json.load(json_file)
+
+            if not data.get("people") or not data["people"]:
+                continue  # Skip frame if no people are detected
+
+            keypoints = []
+            for part in ["face_keypoints_3d", "hand_left_keypoints_3d", "hand_right_keypoints_3d", "pose_keypoints_3d"]:
+                part_keypoints = reshape_keypoints(data["people"][part])
+                averaged_keypoints = part_keypoints.mean(dim=1)
+                keypoints.extend(averaged_keypoints.tolist())
+
+            if len(keypoints) < 137:  # Check if keypoints length is as expected
+                continue  # Skip frame if keypoints are missing
+
+            # Average all keypoints to a single value
+            average_value = torch.tensor(keypoints).mean()
+            all_frames_values.append(average_value)
+
+        # Handle case with fewer than 128 frames
+        while len(all_frames_values) < 128:
+            all_frames_values.append(torch.tensor(0.0))  # Append zero-padding
+
+        values_tensor = torch.stack(all_frames_values)  # Shape: [128]
+        values_tensor = values_tensor.view(1, 128)  # Reshape to [1, 128] to match LSTM input
+    
+        return values_tensor, self.labels[index]
+
 
 def evenly_sample_frames(total_frames, sample_count):
     frames_to_sample = min(total_frames, sample_count)
