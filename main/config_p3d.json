@@ -10,7 +10,7 @@
         "type": "VideoDataLoader",
         "args":{
             "data_dir": "../../kslr-60/data/image_data",
-            "batch_size": 16,
+            "batch_size": 64,
             "shuffle": true,
             "validation_split": 0.1,
             "num_workers": 2

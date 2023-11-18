@@ -116,7 +116,7 @@ class KeyPointDataset(Dataset):
         self.path = path
         self.mode = mode
 
-        self.num_samples = 128
+        self.num_samples = 64
         
         if transforms is None:
             self.transforms = T.Compose([
@@ -156,19 +156,19 @@ class KeyPointDataset(Dataset):
             data = json.load(json_file)
             json_file.close()
             
-            # 4 (x,y,z, confidence) * 70 keypoints => [3, 70]
-            face_keypoints = reshape_keypoints(data["people"]["face_keypoints_3d"])
-            # 4 * 25 keypoints => [3, 25]
-            pose_keypoints = reshape_keypoints(data["people"]["pose_keypoints_3d"])
+            # # 4 (x,y,z, confidence) * 70 keypoints => [3, 70]
+            # face_keypoints = reshape_keypoints(data["people"]["face_keypoints_3d"])
+            # # 4 * 25 keypoints => [3, 25]
+            # pose_keypoints = reshape_keypoints(data["people"]["pose_keypoints_3d"])
             # 4 * 21 keypoints => [3, 21]
             hand_right_keypoints = reshape_keypoints(data["people"]["hand_right_keypoints_3d"])
             # 4 * 21 keypoints => [3, 21]
             hand_left_keypoints = reshape_keypoints(data["people"]["hand_left_keypoints_3d"])
 
-            all_keypoints = torch.cat((face_keypoints, pose_keypoints, hand_right_keypoints, hand_left_keypoints), dim=0)
+            all_keypoints = torch.cat((hand_right_keypoints, hand_left_keypoints), dim=0)
             keypoints.append(all_keypoints)
         
-        # 128, 137, 3
+        # 64, 42, 3
         keypoints_data = torch.stack(keypoints, dim=0).transpose(0,2)
         keypoints_data = F.interpolate(keypoints_data.unsqueeze(0), size=(224,224)).squeeze(0)
 
