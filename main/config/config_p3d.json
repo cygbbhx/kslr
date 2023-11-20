@@ -1,19 +1,25 @@
 {
-    "name": "LSTM",
+    "name": "Video_P3D",
     "n_gpu": 1,
 
     "arch": {
-        "type": "LSTMmodel",
-        "args": {}
+        "type": "P3D",
+        "args":  {
+            
+        }
     },
     "data_loader": {
-        "type": "KeyPointsDataLoader_forlstm",
+        "type": "VideoDataLoader",
         "args":{
-            "data_dir": "data/",
-            "batch_size": 64,
+            "data_dir": "../../kslr-60/data/image_data",
+            "batch_size": 16,
             "shuffle": true,
             "validation_split": 0.1,
-            "num_workers": 2
+            "num_workers": 2,
+
+            "frames": 16,
+            "sample_even": true,
+            "interval": 0
         }
     },
     "optimizer": {
@@ -36,7 +42,7 @@
         }
     },
     "trainer": {
-        "epochs": 50,
+        "epochs": 100,
 
         "save_dir": "saved/",
         "save_period": 1,

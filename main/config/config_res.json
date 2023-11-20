@@ -14,9 +14,12 @@
             "shuffle": true,
             "validation_split": 0.1,
             "num_workers": 2,
+
             "frames": 32,
             "sample_even": true,
-            "interval": 0
+            "interval": 0,
+            "keypoints": ["face", "pose", "hands"], 
+            "format": "image"
         }
     },
     "optimizer": {

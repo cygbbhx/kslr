@@ -1,19 +1,25 @@
 {
-    "name": "Video_I3D",
+    "name": "Video_I3D_ImageKeypoints",
     "n_gpu": 1,
 
     "arch": {
         "type": "I3D",
-        "args": {}
+        "args": {
+            "num_frames":16
+        }
     },
     "data_loader": {
         "type": "VideoDataLoader",
         "args":{
-            "data_dir": "../../kslr-60/data/image_data",
+            "data_dir": "../../../hyemi/mediapipe_processing/data/image_keypoints_data",
             "batch_size": 16,
             "shuffle": true,
             "validation_split": 0.1,
-            "num_workers": 4
+            "num_workers": 4,
+
+            "frames": 16,
+            "sample_even": true,
+            "interval": 4
         }
     },
     "optimizer": {

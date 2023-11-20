@@ -1,19 +1,28 @@
 {
-    "name": "CNN-LSTM",
+    "name": "CNN-LSTM-onlyHands-Uniform0-128F",
     "n_gpu": 1,
 
     "arch": {
         "type": "Conv1d_LSTM",
-        "args": {}
+        "args": {
+            "in_channels":128
+        }
     },
     "data_loader": {
-        "type": "KeyPointsDataLoader_for1dcnnlstm",
+        "type": "KeyPointsDataLoader",
         "args":{
-            "data_dir": "data/",
+            "data_dir": "../../../hyemi/mediapipe_processing/data/keypoints_data/",
             "batch_size": 64,
             "shuffle": true,
             "validation_split": 0.1,
-            "num_workers": 2
+            "num_workers": 4,
+            
+            "frames": 128,
+            "sample_even": false,
+            "interval": 0,
+            "keypoints": ["hand_right", "hand_left"], 
+            "format": "normal",
+            "framework": "mediapipe"
         }
     },
     "optimizer": {
