@@ -20,7 +20,10 @@ This project focuses on video classification at the word level, specifically tar
 
 ## Dataset
 We used the following dataset for our Korean Sign Language Translation project:
-- [aihub Sign Language Video Dataset](https://aihub.or.kr/aihubdata/data/view.do?currMenu=115&topMenu=100&aihubDataSe=realm&dataSetSn=103)
+- [AIhub Sign Language Video Dataset](https://aihub.or.kr/aihubdata/data/view.do?currMenu=115&topMenu=100&aihubDataSe=realm&dataSetSn=103)
+- After downloading the dataset, you will have to convert videos into images of frames. We have utilized the generation code `./utils/generate_data.sh` from [here](https://github.com/pranoyr/cnn-lstm/). Environment setup for the preprocessing is also included in the repository's README. 
+- For the AIhub dataset, we also provide you a code for easier preprocessing as below:
+  - `preprocessing/rearrange_videos.py`: extracts only the videos that are in `target_words.txt` from all zipfiles and rearranges them into directories of classes (words). This code will be useful if you want only a subset, rather than extracting all the zipfiles.
   
 ## Setup
 To set up the project, follow these steps:
@@ -31,7 +34,7 @@ git clone https://github.com/cygbbhx/kslr.git
 cd kslr
 ```
 ### 2. Install Dependencies
-Create and activate a virtual environment using [conda](https://docs.conda.io/projects/conda/en/latest/index.html):
+Create and activate a virtual environment using anaconda:
 ```bash
 conda create --name kslr-env python=3.8
 conda activate kslr-env
@@ -42,8 +45,6 @@ Install the required packages:
 pip install -r requirements.txt
 ```
 
-### 3. Data Preprocessing
-Explain any necessary data preprocessing steps here.
 
 ## Training the Model
 To train the model, run the following command:
