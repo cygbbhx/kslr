@@ -60,8 +60,8 @@ class Trainer(BaseTrainer):
                     self._progress(batch_idx),
                     loss.item()))
                 
-                if len(data.shape) <= 4:
-                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                # if len(data.shape) <= 4:
+                #     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
         
             if batch_idx == self.len_epoch:
                 break
@@ -96,8 +96,8 @@ class Trainer(BaseTrainer):
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
                     
-                if len(data.shape) <= 4:
-                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                # if len(data.shape) <= 4:
+                #     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
