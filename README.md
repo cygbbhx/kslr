@@ -6,12 +6,17 @@
 </br>
 
 ---
-
+## Introduction
+This project focuses on video classification at the word level, specifically targeting Korean Sign Language (KSL). By taking word-level sign language videos as input, our system classifies the signs into distinct categories. The model is designed to process approximately 64 frames of video, providing classification for 60 different sign language words. Explore our repository to delve into the implementation and contribute to the development of this meaningful initiative.
 
 ## Team Members
-- [Member 1] - Role
-- [Member 2](#) - Role
-- [Member 3](#) - Role
+<b>
+:point_up: Sohyun Yoo (YAI 12th) - Video data preprocessing / Model Experiments / Lead </br>
+:v: Meedeum Cho (YAI 11th) - Segmentation / Real-time Demo </br>
+:ok_hand: Hyunjin Park (YAI 12th) - Keypoint data analysis & preprocessing </br>
+:facepunch: Jeongmin Seo (YAI 12th) - Model Experiments / Data collecting </br>
+:raised_hand_with_fingers_splayed: Hyemi Yoo (YAI 12th) - Model Experiments / Real-time Demo </br>
+</b>
 
 ## Dataset
 We used the following dataset for our Korean Sign Language Translation project:
