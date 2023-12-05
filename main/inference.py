@@ -6,10 +6,13 @@ import model.metric as module_metric
 import model.model as module_arch
 from parse_config import ConfigParser
 import torchvision.transforms as T
-from data_loader.data_loaders import evenly_sample_frames
+from data_loader.data_loaders import evenly_sample_frames, uniform_sample_frames
 import cv2
 from PIL import Image
 import torch.nn.functional as F
+import pandas as pd
+import time
+import os 
 
 def vid2frames(path):
     cam = cv2.VideoCapture(path)
@@ -28,10 +31,12 @@ def vid2frames(path):
         ret, img = cam.read()
         if not ret: # no frame read, break
             break
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         clip.append(transforms(Image.fromarray(img)))
         frame_count += 1
 
-    sampled_indices = evenly_sample_frames(frame_count, 64)
+    
+    sampled_indices = evenly_sample_frames(frame_count, 64, 0)
     sampled_frames = [clip[idx] for idx in sampled_indices]
 
     clip = torch.stack(sampled_frames, dim=0).transpose(0,1)
@@ -47,7 +52,7 @@ def main(config, input_path):
     model = config.init_obj('arch', module_arch)
     # logger.info(model)
 
-    logger.info('Loading checkpoint: {} ...'.format(config.resume))
+    logger.info('Loading checkpoint: {} ...\n'.format(config.resume))
     checkpoint = torch.load(config.resume)
     state_dict = checkpoint['state_dict']
     if config['n_gpu'] > 1:
@@ -59,21 +64,60 @@ def main(config, input_path):
     model = model.to(device)
     model.eval()
 
-    with torch.no_grad():
-        clip = vid2frames(input_path)
-        outputs = model(clip.to(device))
-        outputs = F.softmax(outputs)
-        values, indices = torch.topk(outputs, k=5, dim=-1)
+    # prepare lookup table
+    lookup = pd.read_csv('../../../kslr_dataset/dictionary.csv')
 
-    print(values, indices)
+    print("=> model prepared. start inference\n")
+
+    root = '../../../inference_data'
+    correct = 0
+    total = 0
+    inf_times = []
+
+    for path in os.listdir(root):
+        video_path = os.path.join(root, path)
+
+        with torch.no_grad():
+            s = time.time()
+            clip = vid2frames(video_path)
+            outputs = model(clip.to(device))
+            outputs = F.softmax(outputs, dim=-1)
+            values, indices = torch.topk(outputs, k=5, dim=-1)
+
+            # print(values, indices)
+
+            pred_class = indices[0][0].cpu().item()
+            pred_conf = values[0][0].cpu().item()
+
+            gt_idx = int(video_path.split('/')[-1].split('_')[0])
+            gt_lookup = lookup[lookup['word_idx']==gt_idx]
+            gt_word = gt_lookup['word'].values[0]
+
+            pred_idx = lookup.iloc[pred_class]['word_idx']
+            pred_word = lookup.iloc[pred_class]['word']
+            inf_time = (time.time()-s)
+
+            print(f"predicted: {pred_idx:04}: {pred_word} ({pred_conf*100:.2f}%)")
+            print(f"answer: {gt_idx:04}: {gt_word}")
+            print(f"inference time: {inf_time:.4f}s")
+
+            if pred_idx == gt_idx:
+                correct += 1
+            total += 1
+            inf_times.append(inf_time)
+
+    print(f"average inf time: {sum(inf_times)/len(inf_times):.2f}")
+    print(f"accuracy: {correct/total * 100:.2f}")
+
+
         
 
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
-    args.add_argument('-c', '--config', default='config_i3d.json', type=str,
+    args.add_argument('-c', '--config', default='config/config_i3d.json', type=str,
                       help='config file path (default: None)')
-    args.add_argument('-r', '--resume', default='saved/models/Video_I3D/1115_064400/model_best.pth', type=str,
+    args.add_argument('-r', '--resume', default='saved/models/Video_I3D_/1121_094552/checkpoint-epoch3.pth', type=str,
                       help='path to  weight to test (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
