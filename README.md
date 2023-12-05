@@ -51,15 +51,19 @@ To train the model, run the following command:
 ```bash
 python train.py
 ```
+TBU
 
-Explain any additional options or parameters that can be used during training.
+### config
+TBU
 
 ## Inference
+### Model weights
+TBU
+
 ### Inference with video inputs
-To perform inference using the trained model, use the following command:
+TBU
 ```bash
 python inference.py --input_file path/to/input/video.mp4
 ```
-### Inference in real-time Webcam
-Provide any additional instructions or options for the inference process.
+TBU
 ```
