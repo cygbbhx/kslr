@@ -7,6 +7,8 @@ import json
 import torch
 import torch.nn.functional as F
 from PIL import Image
+import math
+import numpy as np
 
 class KeyPointsDataLoader(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True, **kwargs):
@@ -67,6 +69,7 @@ class VideoDataset(Dataset):
         video_dir = self.videos[index]
         frame_keys = sorted(os.listdir(video_dir))
         frame_keys = [frame_key for frame_key in frame_keys if frame_key.endswith('.jpg')]
+        frame_keys = trim_action(video_dir, frame_keys)
         frame_count = len(frame_keys)
 
         sampled_indices = self.sampling(frame_count, self.num_samples, self.interval)
@@ -81,9 +84,14 @@ class VideoDataset(Dataset):
             torch.set_rng_state(state)
             frame = self.transforms(frame)
             frames.append(frame)
-
+        #I3D
         frame_data = torch.stack(frames, dim=0).transpose(0,1)
+
+        #CNNLSTM
+        # frame_data = torch.stack(frames, dim=0)
+
         label = self.labels[index]
+        print(video_dir, label)
 
         return frame_data, label
 
@@ -140,6 +148,8 @@ class KeyPointDataset(Dataset):
     def __getitem__(self, index):
         video_path = self.videos[index]
         frame_keys = sorted(os.listdir(video_path))
+        frame_keys = trim_action(video_path, frame_keys)
+        
         frame_count = len(frame_keys)
         sampled_indices = self.sampling(frame_count, self.num_samples, self.interval)
         sampled_keys = [frame_keys[idx] for idx in sampled_indices]
@@ -149,45 +159,20 @@ class KeyPointDataset(Dataset):
         idx = 1
 
         for frame_key in sampled_keys:
-            try:
-                json_file = open(os.path.join(video_path, frame_key))
-                data = json.load(json_file)
-                json_file.close()
-            except Exception as e:
-                print(f"{video_path}/{frame_key}", e)
-                prev_key_file = open(os.path.join(video_path, prev_key))
-                data = json.load(prev_key_file)
-                with open(os.path.join(video_path, frame_key), 'w') as f:
-                    json.dump(data, f, indent=4)
-                prev_key_file.close()
+            json_file = open(os.path.join(video_path, frame_key))
+            data = json.load(json_file)
+            json_file.close()
 
             total_keypoints = []
 
             for keypoint_type in self.keypoint_types:
                 if self.framework == 'openpose':
-                    type_keypoints = data["people"][f"{keypoint_type}_keypoints_3d"]
+                    type_keypoints = data["people"][f"{keypoint_type}_keypoints_2d"]
                     type_keypoints = reshape_keypoints(type_keypoints)
                 else: # mediapipe json
-                    if f"{keypoint_type}_keypoints" not in data.keys():
-                        while prev_key == None:
-                            cand_file = open(os.path.join(video_path, frame_keys[idx]))
-                            cand_data = json.load(cand_file)
-                            cand_file.close()
-
-                            if f"{keypoint_type}_keypoints" in cand_data.keys():
-                                prev_key = frame_keys[idx]
-                            else:
-                                idx += 1
-
-                        prev_key_file = open(os.path.join(video_path, prev_key))
-                        data = json.load(prev_key_file)
-                        with open(os.path.join(video_path, frame_key), 'w') as f:
-                            json.dump(data, f, indent=4)
-                        prev_key_file.close()
-                    
                     assert f"{keypoint_type}_keypoints" in data.keys(), f"{keypoint_type}_keypoints not exist in {video_path}/{frame_key}"
                     type_keypoints = torch.tensor(data[f"{keypoint_type}_keypoints"])
-                    prev_key = frame_key
+                    type_keypoints = reshape_keypoints(type_keypoints)
                 # averaged_keypoints = type_keypoints.mean(dim=1)
                 total_keypoints.append(type_keypoints)
 
@@ -202,11 +187,44 @@ class KeyPointDataset(Dataset):
             keypoints.append(all_keypoints)
 
         keypoints_data = torch.stack(keypoints)  # Shape: [self.num_samples, 3 * num_keypoints]
+
         
         if self.format == 'flatten':
             keypoints_data = keypoints_data.view(1, self.num_samples)  # Reshape to [1, self.num_samples] to match LSTM input
 
         return keypoints_data, self.labels[index]
+
+def trim_action(video_path, frame_keys):
+    last_dir = video_path.split('/')[-1]
+    vocab = video_path.split('/')[-2]
+    morpheme_path = '../../../kslr_metadata/train_morphemes'
+
+    # video data
+    if len(last_dir) > 1:
+        _, _, _, collector, angle = last_dir.split('_')
+        collector = collector[4:] # REAL01 => 01
+
+    json_filename = os.listdir(os.path.join(morpheme_path, vocab, collector, angle))[0]
+    json_filepath = os.path.join(os.path.join(morpheme_path, vocab, collector, angle, json_filename))
+
+    jsonfile = open(json_filepath)
+    data = json.load(jsonfile)
+    start = data["data"][0]["start"]
+    end = data["data"][0]["end"]
+
+    # print(f"start: {start} | end: {end}")
+
+    start_frame = math.floor(start * 30)
+    end_frame = math.ceil(end * 30)
+    # print(f"start frame: {start_frame} | end_frame: {end_frame}")
+    # print(f"originally {len(frame_keys)} frames")
+
+    trimmed = frame_keys[start_frame: end_frame]
+
+    # print(f"{len(trimmed)} frames")
+
+    return trimmed
+    
 
 def evenly_sample_frames(total_frames, sample_count, interval):
     frames_to_sample = min(total_frames, sample_count)
@@ -227,7 +245,18 @@ def uniform_sample_frames(total_frames, sample_count, interval):
 
 def reshape_keypoints(keypoints_data):
     del keypoints_data[4-1::4] # remove every 4th (confidence) value
-    reshaped_keypoints = torch.tensor(keypoints_data).reshape(-1, 3)
+    # Remove every 3rd value
+    del keypoints_data[2::3]
+
+    # Divide every 1st value by 1920 and every 2nd value by 1080
+    for i in range(0, len(keypoints_data), 2):
+        keypoints_data[i] /= 1920
+        keypoints_data[i + 1] /= 1080
+
+    x, y, z = split_coordinates(keypoints_data)
+    normalized_data = merge_coordinates(normalize(x), normalize(y), normalize(z))
+
+    reshaped_keypoints = torch.tensor(normalized_data).reshape(-1, 3)
 
     return reshaped_keypoints
 
@@ -236,3 +265,28 @@ if __name__ == '__main__':
 
     for d in ds:
         print(d['frame'].shape)
+
+def split_coordinates(input_list):
+    x_coordinates = input_list[::3]
+    y_coordinates = input_list[1::3]
+    z_coordinates = input_list[2::3]
+
+    return x_coordinates, y_coordinates, z_coordinates
+
+def merge_coordinates(x_values, y_values, z_values):
+    merged_list = [coord for triplet in zip(x_values, y_values, z_values) for coord in triplet]
+
+    return merged_list
+
+
+def normalize(coordinates):
+    c_array = np.array(coordinates)
+
+    # Calculate mean and covariance
+    mean_value = np.mean(c_array)
+    std_dev = np.std(c_array)
+
+    # Normalize using mean and covariance
+    normalized_coordinates = (c_array - mean_value) / std_dev
+
+    return normalized_coordinates
