@@ -44,7 +44,7 @@ Install the required packages:
 ```bash
 pip install -r requirements.txt
 ```
-- We have used CUDA 11.6 and python 3.7.
+- We used **CUDA 11.6** and **Python 3.7.**
 
 ## Training the Model
 To train the model, run the following command:
