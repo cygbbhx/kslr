@@ -244,14 +244,14 @@ def uniform_sample_frames(total_frames, sample_count, interval):
     return sample_indices
 
 def reshape_keypoints(keypoints_data):
-    del keypoints_data[4-1::4] # remove every 4th (confidence) value
-    # Remove every 3rd value
-    del keypoints_data[2::3]
+    # Removes every 4th or 3rd value. Uncomment according to your keypoint formats
+    # del keypoints_data[4-1::4] 
+    # del keypoints_data[2::3]
 
     # Divide every 1st value by 1920 and every 2nd value by 1080
-    for i in range(0, len(keypoints_data), 2):
-        keypoints_data[i] /= 1920
-        keypoints_data[i + 1] /= 1080
+    # for i in range(0, len(keypoints_data), 2):
+    #     keypoints_data[i] /= 1920
+    #     keypoints_data[i + 1] /= 1080
 
     x, y, z = split_coordinates(keypoints_data)
     normalized_data = merge_coordinates(normalize(x), normalize(y), normalize(z))
