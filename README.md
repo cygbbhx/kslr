@@ -58,12 +58,18 @@ TBU
 
 ## Inference
 ### Model weights
-TBU
+TBA
 
 ### Inference with video inputs
 TBU
 ```bash
 python inference.py --input_file path/to/input/video.mp4
 ```
-TBU
+
+### Inference with Real-time Webcam (Demo)
+To try the demo with real world input, run `demo.py` below main/demo directory. 
 ```
+cd demo
+python demo.py -w path_to_model_weight.pt
+```
+- You can adjust the arguments to change the input to be RGB (pixel values) or keypoints. In our implementation, the code automatically changes the input type according to the model choice.
