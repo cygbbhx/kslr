@@ -36,7 +36,7 @@ cd kslr
 ### 2. Install Dependencies
 Create and activate a virtual environment using anaconda:
 ```bash
-conda create --name kslr-env python=3.8
+conda create --name kslr-env python=3.7
 conda activate kslr-env
 ```
 
@@ -44,7 +44,7 @@ Install the required packages:
 ```bash
 pip install -r requirements.txt
 ```
-
+- We have used CUDA 11.6 and python 3.7.
 
 ## Training the Model
 To train the model, run the following command:
