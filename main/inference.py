@@ -65,56 +65,47 @@ def main(config, input_path):
     model.eval()
 
     # prepare lookup table
-    lookup = pd.read_csv('../../../kslr_dataset/dictionary.csv')
-
+    lookup = pd.read_csv('demo/dictionary.csv')
     print("=> model prepared. start inference\n")
 
-    root = '../../../inference_data'
     correct = 0
     total = 0
     inf_times = []
 
-    for path in os.listdir(root):
-        video_path = os.path.join(root, path)
+    video_path = input_path
 
-        with torch.no_grad():
-            s = time.time()
-            clip = vid2frames(video_path)
-            outputs = model(clip.to(device))
-            outputs = F.softmax(outputs, dim=-1)
-            values, indices = torch.topk(outputs, k=5, dim=-1)
+    with torch.no_grad():
+        s = time.time()
+        clip = vid2frames(video_path)
+        outputs = model(clip.to(device))
+        outputs = F.softmax(outputs, dim=-1)
+        values, indices = torch.topk(outputs, k=5, dim=-1)
 
-            # print(values, indices)
+        # print(values, indices)
 
-            pred_class = indices[0][0].cpu().item()
-            pred_conf = values[0][0].cpu().item()
+        pred_class = indices[0][0].cpu().item()
+        pred_conf = values[0][0].cpu().item()
 
-            gt_idx = int(video_path.split('/')[-1].split('_')[0])
-            gt_lookup = lookup[lookup['word_idx']==gt_idx]
-            gt_word = gt_lookup['word'].values[0]
+        # Comment this part if you do not have ground truth prepared
+        gt_idx = int(video_path.split('/')[-1].split('_')[0])
+        gt_lookup = lookup[lookup['word_idx']==gt_idx]
+        gt_word = gt_lookup['word'].values[0]
 
-            pred_idx = lookup.iloc[pred_class]['word_idx']
-            pred_word = lookup.iloc[pred_class]['word']
-            inf_time = (time.time()-s)
+        pred_idx = lookup.iloc[pred_class]['word_idx']
+        pred_word = lookup.iloc[pred_class]['word']
+        inf_time = (time.time()-s)
 
-            print(f"predicted: {pred_idx:04}: {pred_word} ({pred_conf*100:.2f}%)")
-            print(f"answer: {gt_idx:04}: {gt_word}")
-            print(f"inference time: {inf_time:.4f}s")
-
-            if pred_idx == gt_idx:
-                correct += 1
-            total += 1
-            inf_times.append(inf_time)
-
-    print(f"average inf time: {sum(inf_times)/len(inf_times):.2f}")
-    print(f"accuracy: {correct/total * 100:.2f}")
+        print(f"predicted: {pred_idx:04}: {pred_word} ({pred_conf*100:.2f}%)")
+        # Comment this part if you do not have ground truth prepared
+        print(f"answer: {gt_idx:04}: {gt_word}")
+        print(f"inference time: {inf_time:.4f}s")
 
 
         
 
 
 if __name__ == '__main__':
-    args = argparse.ArgumentParser(description='PyTorch Template')
+    args = argparse.ArgumentParser(description='Inference')
     args.add_argument('-c', '--config', default='config/config_i3d.json', type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default='saved/models/Video_I3D_/1121_094552/checkpoint-epoch3.pth', type=str,
