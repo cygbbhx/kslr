@@ -49,22 +49,21 @@ pip install -r requirements.txt
 ## Training the Model
 To train the model, run the following command:
 ```bash
-python train.py
+python train.py -c config/path_to_your_config.yaml
 ```
-TBU
+- We have provided some example configs in `main/config`. You will have to modify arguments such as `data_dir` within the config to use them.
 
-### config
-TBU
 
 ## Inference
 ### Model weights
 TBA
 
 ### Inference with video inputs
-TBU
+To inference with other videos, run the following command:
 ```bash
-python inference.py --input_file path/to/input/video.mp4
+python inference.py --input_path path/to/input/video.mp4
 ```
+- You will have to modify arguments such as `--config` or `--resume` to provide correct model and weights to use.
 
 ### Inference with Real-time Webcam (Demo)
 To try the demo with real world input, run `demo.py` below main/demo directory. 
